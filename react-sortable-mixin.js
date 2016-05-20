@@ -2,21 +2,23 @@
  * @author RubaXa <trash@rubaxa.org>
  * @licence MIT
  */
+ 
+ // Taken from https://github.com/RubaXa/Sortable/pull/754
 
 (function (factory) {
 	'use strict';
 
 	if (typeof module != 'undefined' && typeof module.exports != 'undefined') {
-		module.exports = factory(require('./Sortable'));
+		module.exports = factory(require('./Sortable'), require('react-dom'));
 	}
 	else if (typeof define === 'function' && define.amd) {
-		define(['./Sortable'], factory);
+		define(['./Sortable', 'react-dom'], factory);
 	}
 	else {
 		/* jshint sub:true */
-		window['SortableMixin'] = factory(Sortable);
+		window['SortableMixin'] = factory(Sortable, ReactDOM);
 	}
-})(function (/** Sortable */Sortable) {
+})(function (/** Sortable */Sortable, /** ReactDOM */ReactDOM) {
 	'use strict';
 
 	var _nextSibling;
@@ -35,7 +37,8 @@
 		onRemove: 'handleRemove',
 		onSort: 'handleSort',
 		onFilter: 'handleFilter',
-		onMove: 'handleMove'
+		onMove: 'handleMove',
+		onClone: 'handleClone'
 	};
 
 
@@ -85,8 +88,11 @@
 				copyOptions = _extend({}, options),
 
 				emitEvent = function (/** string */type, /** Event */evt) {
-					var method = this[options[type]];
-					method && method.call(this, evt, this._sortableInstance);
+					var method = options[type];
+					if (method && typeof method === "string") {
+						method = this[method];
+					}
+					method && typeof method === "function" && method.call(this, evt, this._sortableInstance);
 				}.bind(this);
 
 
@@ -120,13 +126,13 @@
 						}
 
 						newState[_getModelName(this)] = items;
-						
+
 						if (copyOptions.stateHandler) {
 							this[copyOptions.stateHandler](newState);
 						} else {
 							this.setState(newState);
 						}
-						
+
 						(this !== _activeComponent) && _activeComponent.setState(remoteState);
 					}
 
@@ -135,8 +141,16 @@
 					}, 0);
 				}.bind(this);
 			}, this);
-
-			DOMNode = this.getDOMNode() ? (this.refs[options.ref] || this).getDOMNode() : this.refs[options.ref] || this;
+			
+			if(typeof(ReactDOM) !== 'undefined')
+			{
+				DOMNode = ReactDOM.findDOMNode(this.refs[options.ref] || this);
+			}
+			else
+			{
+				DOMNode = typeof this.getDOMNode === 'function' ? (this.refs[options.ref] || this).getDOMNode() : this.refs[options.ref] || this;
+			}
+			
 
 			/** @namespace this.refs — http://facebook.github.io/react/docs/more-about-refs.html */
 			this._sortableInstance = Sortable.create(DOMNode, copyOptions);
